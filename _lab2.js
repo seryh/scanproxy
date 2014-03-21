@@ -9,19 +9,19 @@ var options = {
   }
 };
 
-	 var req = http.get(options, function(response) {
-	  var str = '';
-	  response.on('data', function (chunk) {
-	    str += chunk;
-	  });
-	  response.on('end', function () {
-	  	console.log(str);
-	    console.log(str.indexOf('<title>Яндекс</title>'));
-	  });
-	})
+var req = http.get(options, function(response) {
+    var str = '';
+    response.on('data', function (chunk) {
+        str += chunk;
+    });
+    response.on('end', function () {
+        console.log(str);
+        console.log(str.indexOf('<title>Яндекс</title>'));
+    });
+})
 
-	req.on('error', function(e) {
-  		console.log('problem with request: ' + e.message);
-	});
+req.on('error', function(e) {
+    console.log('problem with request: ' + e.message);
+});
 
-	req.end();
+req.end();
