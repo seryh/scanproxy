@@ -27,22 +27,36 @@ var nowDateStr = moment().format("YYYY-MM-DD_HH_mm"),
     iteratorCountForWorker = Math.ceil( iteratorCount / childCount ),
     goodProxyListAll = [];
 
-var CONST_CHILD_COUNT = childCount;
-var exitCounter = 0;
+var workerCounter = 0;
 var maxTimeMinute = Math.ceil(( iteratorCount * config.ports.length/childCount * 6000)/60000);
 
 console.log('\n\tWorked, please wait %s minutes for scanning %s count ip. From date %s',
                 maxTimeMinute,
                 iteratorCount,
                 moment().format("YYYY.MM.DD HH:mm"));
-console.log('\tworker created – %s', CONST_CHILD_COUNT);
+
+process.on('exit', function() {
+    if (goodProxyListAll.length) {
+        console.log('\n\tWork finish, result in file: %s\n', goodProxyFileName);
+    } else {
+        console.log('\n\tWork finish, good proxy not found for range: %s – %s\n', config.ipStart, config.ipFinish);
+    }
+});
+
+process.on('uncaughtException', function(err) {
+    console.log('Caught exception: ', err);
+});
+
 
 while(childCount--) {
 
-    if (ipStartLong >= ipFinishLong) return true;
+    if (ipStartLong >= ipFinishLong) {
+        console.log('\tWorker created –', workerCounter);
+        return true;
+    }
 
     (function() {
-
+        workerCounter++;
         var worker = require('child_process').fork('./lib/worker.js', ['runAsChild']);
 
         worker.on('message', function(goodProxyList) {
@@ -60,16 +74,6 @@ while(childCount--) {
             worker.kill('SIGHUP');
         });
 
-        worker.on('exit', function() {
-            exitCounter++;
-            console.log('\texit worker:: %s/%s',exitCounter, CONST_CHILD_COUNT);
-        });
-
-        worker.on('disconnect', function() {
-            exitCounter++;
-            console.log('\tdisconnect worker:: %s/%s',exitCounter, CONST_CHILD_COUNT);
-        });
-
         worker.send({
             ipStartString: hexip(hexip.hex(ipStartLong)),
             iteratorCountForWorker: iteratorCountForWorker
@@ -79,19 +83,6 @@ while(childCount--) {
 
     ipStartLong = ipStartLong + iteratorCountForWorker;
 }
-
-process.on('exit', function() {
-    if (goodProxyListAll.length) {
-        console.log('\n\tWork finish, result in file: %s\n', goodProxyFileName);
-    } else {
-        console.log('\n\tWork finish, good proxy not found for range: %s – %s\n', config.ipStart, config.ipFinish);
-    }
-});
-
-process.on('uncaughtException', function(err) {
-    console.log('Caught exception: ' + err);
-});
-
 
 /*russian range
  "ipStart" : "80.112.143.42",
