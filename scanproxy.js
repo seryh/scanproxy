@@ -1,93 +1,103 @@
 var util = require('util'), 
-    config = require('./config.json'), 
-    portscanner = require('portscanner');
+    config = require('./config.json'),
+    hexip = require('hexip'),
+    moment = require('moment'),
+    _ = require('underscore'),
+    fs = require('fs');
 
-config.ipStart = config.ipStart.split('.');
-config.ipFinish = config.ipFinish.split('.');
+_.str = require('underscore.string');
+_.mixin(_.str.exports());
+_.str.include('Underscore.string', 'string');
 
-var scanIP = [];
+var ipStartLong = hexip.long( hexip.hex(config.ipStart) ),
+    ipFinishLong = hexip.long( hexip.hex(config.ipFinish)),
+    iteratorCount = ipFinishLong - ipStartLong;
 
-config.ipStart.forEach(function(item, index) {
-    config.ipStart[index] = parseInt(item, 10);
-    scanIP[index] = config.ipStart[index];
-});
-
-config.ipFinish.forEach(function(item, index) {
-    config.ipFinish[index] = parseInt(item, 10);
-});
-
-var checkProxy = function(adress, port, callback) {
-    var http = require("http");
-    var req = http.get({
-        host: adress,
-        port: port,
-        path: "http://ya.ru",
-        headers: {
-            Host: "ya.ru"
-        }
-    }, function(response) {
-        var str = '';
-        response.on('data', function (chunk) {
-            str += chunk;
-        });
-        response.on('end', function () {
-            var isCheck = (str.indexOf('<title>Яндекс</title>') == -1) ? false : true;
-            callback(isCheck, adress, port);
-        });
-    });
-    req.on('error', function(e) {
-        console.log('%s:%s -> problem with request: %s ',adress, port, e.message);
-    });
-
-    req.end();
+if (iteratorCount <= 0) {
+    console.log('config error:: ip range incorrect\n');
+    return false;
 }
 
-var scanRun = function(scanIP, portIndex) {
-    var port = config.ports[portIndex];
-    portscanner.checkPortStatus(port, scanIP.join('.'), function(error, status) {
-            if (status != 'closed') {
-                checkProxy(scanIP.join('.'), port, function(isCheck, _adress, _port){
-                    if (isCheck) {
-                        console.log('Good proxy: %s:%s %s', _adress, _port, status);      
-                    } else {
-                        console.log('Bad proxy: %s:%s %s', _adress, _port, status);  
-                    }
+var childCount = process.argv[2] || 100;
+
+if (iteratorCount <= childCount) childCount = 1;
+
+var nowDateStr = moment().format("YYYY-MM-DD_HH_mm"),
+    goodProxyFileName = 'proxy_'+nowDateStr+'.txt',
+    iteratorCountForWorker = Math.ceil( iteratorCount / childCount ),
+    goodProxyListAll = [];
+
+var CONST_CHILD_COUNT = childCount;
+var exitCounter = 0;
+var maxTimeMinute = Math.ceil(( iteratorCount * config.ports.length/childCount * 6000)/60000);
+
+console.log('\n\tWorked, please wait %s minutes for scanning %s count ip. From date %s',
+                maxTimeMinute,
+                iteratorCount,
+                moment().format("YYYY.MM.DD HH:mm"));
+console.log('\tworker created – %s', CONST_CHILD_COUNT);
+
+while(childCount--) {
+
+    if (ipStartLong >= ipFinishLong) return true;
+
+    (function() {
+
+        var worker = require('child_process').fork('./lib/worker.js', ['runAsChild']);
+
+        worker.on('message', function(goodProxyList) {
+
+            if (goodProxyList.length) {
+
+                goodProxyList.forEach(function(goodIpString) {
+                    goodProxyListAll.push(goodIpString);
+                    fs.appendFile(goodProxyFileName, util.format('%s\n',goodIpString), function(err) {
+                        if(err) console.log(err);
+                    });
                 });
             }
 
-            if (portIndex < config.ports.length-1) {
-                portIndex++;
-                scanRun(scanIP, portIndex);
-                return;
-            } else {
-                portIndex = 0;
-            }
-            if (scanIP[3] < config.ipFinish[3]) {
-                    scanIP[3]++;
-                    scanRun(scanIP, portIndex);
-                    return;
-            } else if (scanIP[2] < config.ipFinish[2]) {
-                    scanIP[2]++;
-                    scanIP[3] = 0;
-                    scanRun(scanIP, portIndex);
-                    return;
-            } else if (scanIP[1] < config.ipFinish[1]) {
-                    scanIP[1]++;
-                    scanIP[3] = 0;
-                    scanIP[2] = 0;
-                    scanRun(scanIP, portIndex);
-                    return;    
-            } else if (scanIP[0] < config.ipFinish[0]) {
-                    scanIP[0]++;
-                    scanIP[3] = 0;
-                    scanIP[2] = 0;
-                    scanIP[1] = 0;
-                    scanRun(scanIP, portIndex);
-                    return;
-            }
-    });
+            worker.kill('SIGHUP');
+        });
+
+        worker.on('exit', function() {
+            exitCounter++;
+            console.log('\texit worker:: %s/%s',exitCounter, CONST_CHILD_COUNT);
+        });
+
+        worker.on('disconnect', function() {
+            exitCounter++;
+            console.log('\tdisconnect worker:: %s/%s',exitCounter, CONST_CHILD_COUNT);
+        });
+
+        worker.send({
+            ipStartString: hexip(hexip.hex(ipStartLong)),
+            iteratorCountForWorker: iteratorCountForWorker
+        });
+
+    })();
+
+    ipStartLong = ipStartLong + iteratorCountForWorker;
 }
 
-scanRun(scanIP, 0);
+process.on('exit', function() {
+    if (goodProxyListAll.length) {
+        console.log('\n\tWork finish, result in file: %s\n', goodProxyFileName);
+    } else {
+        console.log('\n\tWork finish, good proxy not found for range: %s – %s\n', config.ipStart, config.ipFinish);
+    }
+});
+
+process.on('uncaughtException', function(err) {
+    console.log('Caught exception: ' + err);
+});
+
+
+/*russian range
+ "ipStart" : "80.112.143.42",
+ "ipFinish" : "81.112.200.42",
+ */
+
+
 
 
