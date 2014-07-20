@@ -1,5 +1,7 @@
 #multithreaded proxy scanner#
 
+Change config.js for set ip range and ports.
+
 ###Using:###
 
 ```
