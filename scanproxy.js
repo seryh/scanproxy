@@ -18,7 +18,7 @@ if (iteratorCount <= 0) {
     return false;
 }
 
-var childCount = process.argv[2] || 100;
+var childCount = process.argv[2] || config.workersCount;
 
 if (iteratorCount <= childCount) childCount = 1;
 
