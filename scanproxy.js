@@ -59,19 +59,15 @@ while(childCount--) {
         workerCounter++;
         var worker = require('child_process').fork('./lib/worker.js', ['runAsChild']);
 
-        worker.on('message', function(goodProxyList) {
+        worker.on('message', function(goodIpString) {
+            goodProxyListAll.push(goodIpString);
+            fs.appendFile(goodProxyFileName, util.format('%s\n',goodIpString), function(err) {
+                if(err) console.log(err);
+            });
+        });
 
-            if (goodProxyList.length) {
-
-                goodProxyList.forEach(function(goodIpString) {
-                    goodProxyListAll.push(goodIpString);
-                    fs.appendFile(goodProxyFileName, util.format('%s\n',goodIpString), function(err) {
-                        if(err) console.log(err);
-                    });
-                });
-            }
-
-            worker.kill('SIGHUP');
+        worker.on('exit', function() {
+            //console.log('\tWorker exit %s',worker.pid);
         });
 
         worker.send({

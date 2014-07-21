@@ -1,8 +1,8 @@
 {
-    "ipStart" : "80.112.143.42",
-    "ipFinish" : "81.112.200.42",
-    "proxyTimeout": 500,
-    "workersCount": 30,
+    "ipStart" : "170.24.134.28",
+    "ipFinish" : "170.24.135.1",
+    "proxyTimeout": 1000,
+    "workersCount": 10,
 	"ports": [80, 8080, 3128, 1080, 3128]
 }
 
