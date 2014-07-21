@@ -28,7 +28,7 @@ var nowDateStr = moment().format("YYYY-MM-DD_HH_mm"),
     goodProxyListAll = [];
 
 var workerCounter = 0;
-var maxTimeMinute = Math.ceil(( iteratorCount * config.ports.length/childCount * 6000)/60000);
+var maxTimeMinute = Math.ceil(( iteratorCount * config.ports.length/childCount * (config.proxyTimeout*2))/60000);
 
 console.log('\n\tWorked, please wait %s minutes for scanning %s count ip. From date %s',
                 maxTimeMinute,
