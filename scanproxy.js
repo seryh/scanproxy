@@ -30,10 +30,11 @@ var nowDateStr = moment().format("YYYY-MM-DD_HH_mm"),
 var workerCounter = 0;
 var maxTimeMinute = Math.ceil(( iteratorCount * config.ports.length/childCount * (config.proxyTimeout*2))/60000);
 
-console.log('\n\tWorked, please wait %s minutes for scanning %s count ip. From date %s',
+console.log('\n\tWorked, please wait %s minutes for scanning %s count ip. From date %s. PID %s',
                 maxTimeMinute,
                 iteratorCount,
-                moment().format("YYYY.MM.DD HH:mm"));
+                moment().format("YYYY.MM.DD HH:mm"),
+                process.pid);
 
 process.on('exit', function() {
     if (goodProxyListAll.length) {
@@ -64,10 +65,6 @@ while(childCount--) {
             fs.appendFile(goodProxyFileName, util.format('%s\n',goodIpString), function(err) {
                 if(err) console.log(err);
             });
-        });
-
-        worker.on('exit', function() {
-            //console.log('\tWorker exit %s',worker.pid);
         });
 
         worker.send({
