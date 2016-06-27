@@ -7,7 +7,7 @@ Change config.js for set ip range and ports.
 ```
 #!bash
 
-$ nmp install
+$ npm install
 $ node scanproxy.js
 ```
 
